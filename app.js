@@ -195,18 +195,20 @@ async function fetchLiveData(targetDate) {
         else if (metric === "tracks") parsed.tracks = rowObj;
       });
 
-      // 2. Fetch Top 5 Songs for date
+      // 2. Fetch All Songs for date
       try {
-        const songsQuery = `SELECT B, C, D, E, F WHERE A = '${targetDate}' ORDER BY D DESC LIMIT 5`;
+        const songsQuery = `SELECT B, C, D, E, F WHERE A = '${targetDate}' ORDER BY D DESC`;
         const songsData = await queryGviz(meta.id, "Songs", songsQuery);
         const sRows = songsData.table.rows || [];
-        parsed.top_songs = sRows.map(sr => ({
+        const allSongs = sRows.map(sr => ({
           name: sr.c[0]?.v || "Unknown",
           total_streams: sr.c[1]?.v || 0,
           daily_streams: sr.c[2]?.v || 0,
           total_change: sr.c[3]?.v || 0,
           daily_change: sr.c[4]?.v || 0
         }));
+        parsed.all_songs = allSongs;
+        parsed.top_songs = allSongs.slice(0, 5);
       } catch (e) {
         console.warn(`Could not query Songs for ${key}:`, e);
       }
@@ -778,6 +780,230 @@ latestDateBtn.addEventListener("click", () => {
 // ----------------------------------------------------
 // Album Telemetry & Projects Engine
 // ----------------------------------------------------
+const ALBUM_TRACKS_MAP = {
+  Lisa: {
+    "alter ego (15t)": [
+      "Rockstar",
+      "New Woman (feat. ROSALÍA)",
+      "Moonlit Floor (Kiss Me)",
+      "Born Again (feat. Doja Cat & RAYE)",
+      "FXCK UP THE WORLD (feat. Future)",
+      "FXCK UP THE WORLD (Vixi Solo Version)",
+      "Dream",
+      "Chill",
+      "Lifestyle",
+      "Elastigirl",
+      "Thunder",
+      "When I'm With You (feat. Tyla)",
+      "BADGRRRL",
+      "Rapunzel (feat. Megan Thee Stallion)",
+      "Rapunzel (Kiki Solo Version)"
+    ],
+    "alter ego (12t)": [
+      "Rockstar",
+      "New Woman (feat. ROSALÍA)",
+      "Moonlit Floor (Kiss Me)",
+      "FXCK UP THE WORLD (Vixi Solo Version)",
+      "Dream",
+      "Chill",
+      "Lifestyle",
+      "Elastigirl",
+      "Thunder",
+      "When I'm With You (feat. Tyla)",
+      "BADGRRRL",
+      "Rapunzel (Kiki Solo Version)"
+    ],
+    "love is like": [
+      "Priceless (feat. LISA)"
+    ]
+  },
+  Jennie: {
+    "ruby (the complete collection)": [
+      "like JENNIE - Extended Remix",
+      "like JENNIE - EDM Remix",
+      "Handlebars - Just JENNIE",
+      "ExtraL - Just JENNIE",
+      "Love Hangover - Just JENNIE",
+      "Damn Right - Just JENNIE",
+      "Intro : JANE with FKJ",
+      "like JENNIE",
+      "start a war",
+      "Handlebars (feat. Dua Lipa)",
+      "with the IE (way up)",
+      "ExtraL (feat. Doechii)",
+      "Mantra",
+      "Love Hangover (feat. Dominic Fike)",
+      "ZEN",
+      "Damn Right (feat. Childish Gambino & Kali Uchis)",
+      "F.T.S.",
+      "Filter",
+      "Seoul City",
+      "Starlight",
+      "twin"
+    ],
+    "ruby (15t)": [
+      "Intro : JANE with FKJ",
+      "like JENNIE",
+      "start a war",
+      "Handlebars (feat. Dua Lipa)",
+      "with the IE (way up)",
+      "ExtraL (feat. Doechii)",
+      "Mantra",
+      "Love Hangover (feat. Dominic Fike)",
+      "ZEN",
+      "Damn Right (feat. Childish Gambino & Kali Uchis)",
+      "F.T.S.",
+      "Filter",
+      "Seoul City",
+      "Starlight",
+      "twin"
+    ],
+    "ruby (14t)": [
+      "Intro : JANE with FKJ",
+      "like JENNIE",
+      "start a war",
+      "Handlebars (feat. Dua Lipa)",
+      "with the IE (way up)",
+      "ExtraL (feat. Doechii)",
+      "Mantra",
+      "Love Hangover (feat. Dominic Fike)",
+      "ZEN",
+      "Damn Right (feat. Childish Gambino & Kali Uchis)",
+      "Filter",
+      "Seoul City",
+      "Starlight",
+      "twin"
+    ],
+    "fallen angel": [
+      "FALLEN ANGEL",
+      "HEAVEN",
+      "Less than a Lover"
+    ]
+  },
+  Rose: {
+    "rosie": [
+      "APT.",
+      "toxic till the end",
+      "number one girl",
+      "3:00 AM",
+      "two years",
+      "not the same",
+      "drinks or coffee",
+      "dance all night",
+      "gameboy",
+      "stay a little longer",
+      "too bad for us",
+      "call it the end"
+    ],
+    "^canciones para bailar en la cocina": [
+      "APT."
+    ],
+    "you'll be alright, kid": [
+      "On My Mind"
+    ]
+  },
+  Jisoo: {
+    "amortage": [
+      "earthquake",
+      "Your Love",
+      "TEARS",
+      "Hugs & Kisses"
+    ]
+  }
+};
+
+const expandedAlbumIds = new Set();
+
+function resolveAlbumTrackTitles(memberKey, albumName, totalStreams, dailyStreams) {
+  const norm = (albumName || "").toLowerCase().trim();
+  const art = ALBUM_TRACKS_MAP[memberKey] || {};
+
+  if (memberKey === "Lisa") {
+    if (norm.includes("love is like")) return art["love is like"] || [];
+    if (norm.includes("alter ego")) {
+      return (totalStreams > 2200000000 || dailyStreams > 1400000)
+        ? art["alter ego (15t)"]
+        : art["alter ego (12t)"];
+    }
+  } else if (memberKey === "Jennie") {
+    if (norm.includes("complete")) return art["ruby (the complete collection)"] || [];
+    if (norm.includes("fallen angel")) return art["fallen angel"] || [];
+    if (norm.includes("ruby")) {
+      return (totalStreams > 3180000000 || dailyStreams > 2270000)
+        ? art["ruby (15t)"]
+        : art["ruby (14t)"];
+    }
+  } else if (memberKey === "Rose") {
+    if (norm.includes("rosie")) return art["rosie"] || [];
+    if (norm.includes("canciones")) return art["^canciones para bailar en la cocina"] || [];
+    if (norm.includes("alright")) return art["you'll be alright, kid"] || [];
+  } else if (memberKey === "Jisoo") {
+    if (norm.includes("amortage")) return art["amortage"] || [];
+  }
+
+  return art[norm] || [];
+}
+
+function getAlbumTrackBreakdown(albumEntry, dayData) {
+  const memberKey = albumEntry.memberKey;
+  const mData = (dayData && dayData[memberKey]) || {};
+  const songsList = mData.all_songs || mData.top_songs || [];
+
+  const expectedTitles = resolveAlbumTrackTitles(
+    memberKey,
+    albumEntry.name,
+    albumEntry.total_streams,
+    albumEntry.daily_streams
+  );
+
+  const songsByName = new Map();
+  songsList.forEach(s => {
+    const rawName = (s.name || "").trim();
+    songsByName.set(rawName, s);
+    songsByName.set(rawName.toLowerCase(), s);
+    const stripped = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (stripped) songsByName.set(stripped, s);
+  });
+
+  const matchedTracks = [];
+  expectedTitles.forEach((expectedTitle, idx) => {
+    const strippedExpected = expectedTitle.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const match = songsByName.get(expectedTitle) || 
+                  songsByName.get(expectedTitle.toLowerCase()) || 
+                  songsByName.get(strippedExpected);
+
+    if (match) {
+      const shareOfTotal = albumEntry.total_streams > 0 ? (match.total_streams / albumEntry.total_streams) * 100 : 0;
+      const shareOfDaily = albumEntry.daily_streams > 0 ? (match.daily_streams / albumEntry.daily_streams) * 100 : 0;
+      matchedTracks.push({
+        trackNum: idx + 1,
+        name: match.name,
+        total_streams: match.total_streams,
+        daily_streams: match.daily_streams,
+        total_change: match.total_change || 0,
+        daily_change: match.daily_change || 0,
+        shareOfTotal,
+        shareOfDaily
+      });
+    } else {
+      matchedTracks.push({
+        trackNum: idx + 1,
+        name: expectedTitle,
+        total_streams: 0,
+        daily_streams: 0,
+        total_change: 0,
+        daily_change: 0,
+        shareOfTotal: 0,
+        shareOfDaily: 0
+      });
+    }
+  });
+
+  // Sort tracks by daily velocity descending (highest streams first)
+  matchedTracks.sort((a, b) => b.daily_streams - a.daily_streams);
+  return matchedTracks;
+}
+
 function updateRadarViewMode() {
   if (activeRadarView === "tracks") {
     if (viewTracksBtn) viewTracksBtn.classList.add("active");
@@ -796,7 +1022,7 @@ function updateRadarViewMode() {
     if (albumFilterBar) albumFilterBar.style.display = "flex";
     if (albumBentoGrid) albumBentoGrid.style.display = "grid";
     if (radarMainTitle) radarMainTitle.innerHTML = `Album Projects Telemetry on <span id="radar-date-label">${currentDate}</span>`;
-    if (radarSubTag) radarSubTag.textContent = "Multi-edition album tracking from Kworb Albums tab";
+    if (radarSubTag) radarSubTag.textContent = "Click any album row to view full tracklist breakdown";
   }
 }
 
@@ -870,7 +1096,7 @@ function renderAlbumsSection(dayData) {
     const barPct = topDebutTotal > 0 ? (alb.total_streams / topDebutTotal) * 100 : 0;
 
     return `
-      <div class="album-card" style="--accent-color: ${meta.accent};">
+      <div class="album-card clickable-bento-card" data-member="${key}" style="--accent-color: ${meta.accent};" title="Click to view track breakdown">
         <div class="album-card-header">
           <div class="album-card-artist">
             <img src="${meta.avatar}" alt="${meta.displayName}" class="album-card-avatar" style="border: 2px solid ${meta.accent};" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
@@ -903,6 +1129,10 @@ function renderAlbumsSection(dayData) {
             <div class="progress-bar-fill" style="width: ${Math.min(Math.max(barPct, 2), 100)}%; background: ${meta.accent};"></div>
           </div>
         </div>
+
+        <div class="bento-click-hint">
+          <span>Click to inspect tracks ▾</span>
+        </div>
       </div>
     `;
   }).join("");
@@ -923,33 +1153,123 @@ function renderAlbumsSection(dayData) {
   // Sort by daily streams descending
   filteredAlbums.sort((a, b) => b.daily_streams - a.daily_streams);
 
-  const albumRows = filteredAlbums.map((a, idx) => `
-    <tr>
-      <td class="font-mono">#${idx + 1}</td>
-      <td>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <span>💿</span>
-          <strong>${a.name}</strong>
-          ${a.isDebut ? '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem;">Debut LP</span>' : ''}
-        </div>
-      </td>
-      <td>
-        <div class="table-member-cell">
-          <img src="${a.avatar}" alt="${a.artist}" class="table-avatar" style="border: 2px solid ${a.accent};" onerror="this.src=getAvatarFallback('${a.artist}', '${a.accent}')">
-          <span style="color: ${a.accent}; font-weight: 700;">${a.artist}</span>
-        </div>
-      </td>
-      <td><span class="badge">${a.category}</span></td>
-      <td class="num-col"><strong>+${fmt(a.daily_streams)}</strong></td>
-      <td class="num-col">${fmtChange(a.daily_change)}</td>
-      <td class="num-col">${fmt(a.total_streams)}</td>
-      <td class="num-col">${fmtChange(a.total_change)}</td>
-    </tr>
-  `);
+  const albumRowsHtml = filteredAlbums.map((a, idx) => {
+    const albId = `${a.memberKey}-${idx}-${a.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+    const tracks = getAlbumTrackBreakdown(a, dayData);
+    const isExpanded = expandedAlbumIds.has(albId);
+
+    // Track rows markup
+    const trackRowsHtml = tracks.map((t, tIdx) => `
+      <tr>
+        <td class="font-mono text-dim" style="text-align: center;">#${tIdx + 1}</td>
+        <td>
+          <div class="track-title-cell">
+            <span class="track-icon">🎵</span>
+            <span class="track-name font-semibold">${t.name}</span>
+          </div>
+        </td>
+        <td class="num-col"><strong>+${fmt(t.daily_streams)}</strong></td>
+        <td class="num-col">${fmtChange(t.daily_change)}</td>
+        <td class="num-col">${fmt(t.total_streams)}</td>
+        <td class="num-col">${fmtChange(t.total_change)}</td>
+        <td class="num-col">
+          <div class="share-progress-wrapper" title="${t.shareOfTotal.toFixed(1)}% of total album streams • ${t.shareOfDaily.toFixed(1)}% of daily velocity">
+            <span class="font-mono share-pct">${t.shareOfTotal.toFixed(1)}%</span>
+            <div class="share-bar-bg">
+              <div class="share-bar-fill" style="width: ${Math.min(Math.max(t.shareOfTotal, 2), 100)}%; background: ${a.accent};"></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+
+    return `
+      <tr class="clickable-album-row ${isExpanded ? 'is-expanded' : ''}" data-album-id="${albId}" data-member="${a.memberKey}" style="--accent-color: ${a.accent};" title="Click to view track breakdown">
+        <td class="font-mono">
+          <div class="album-rank-cell">
+            <span class="album-expand-icon">${isExpanded ? '▼' : '▶'}</span>
+            <span>#${idx + 1}</span>
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>💿</span>
+            <strong>${a.name}</strong>
+            ${a.isDebut ? '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem;">Debut LP</span>' : ''}
+            <span class="badge track-count-badge">${tracks.length} tracks</span>
+          </div>
+        </td>
+        <td>
+          <div class="table-member-cell">
+            <img src="${a.avatar}" alt="${a.artist}" class="table-avatar" style="border: 2px solid ${a.accent};" onerror="this.src=getAvatarFallback('${a.artist}', '${a.accent}')">
+            <span style="color: ${a.accent}; font-weight: 700;">${a.artist}</span>
+          </div>
+        </td>
+        <td><span class="badge">${a.category}</span></td>
+        <td class="num-col"><strong>+${fmt(a.daily_streams)}</strong></td>
+        <td class="num-col">${fmtChange(a.daily_change)}</td>
+        <td class="num-col">${fmt(a.total_streams)}</td>
+        <td class="num-col">${fmtChange(a.total_change)}</td>
+      </tr>
+      <tr class="album-breakdown-row" id="breakdown-${albId}" style="display: ${isExpanded ? 'table-row' : 'none'};">
+        <td colspan="8" class="album-breakdown-cell">
+          <div class="album-breakdown-panel" style="--accent-color: ${a.accent};">
+            <div class="breakdown-header">
+              <div class="breakdown-title-group">
+                <span class="breakdown-disc-icon">💿</span>
+                <div>
+                  <div class="breakdown-album-name">
+                    <strong>${a.name}</strong>
+                    <span class="badge ${a.isDebut ? 'debut' : ''}">${a.category}</span>
+                  </div>
+                  <div class="breakdown-meta">
+                    <span>Artist: <strong style="color: ${a.accent};">${a.artist}</strong></span>
+                    <span>•</span>
+                    <span>🎵 ${tracks.length} Tracks</span>
+                    <span>•</span>
+                    <span>Telemetry: Google Sheets <code>Songs</code> tab</span>
+                  </div>
+                </div>
+              </div>
+              <div class="breakdown-summary-metrics">
+                <div class="summary-pill">
+                  <span class="pill-label">Daily Streams</span>
+                  <span class="pill-val" style="color: ${a.accent};">+${fmt(a.daily_streams)}</span>
+                </div>
+                <div class="summary-pill">
+                  <span class="pill-label">Total Streams</span>
+                  <span class="pill-val">${fmt(a.total_streams)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="breakdown-table-wrapper">
+              <table class="data-table breakdown-subtable">
+                <thead>
+                  <tr>
+                    <th style="width: 45px; text-align: center;">#</th>
+                    <th>Track Title</th>
+                    <th class="num-col">Daily Streams</th>
+                    <th class="num-col">Daily Delta</th>
+                    <th class="num-col">Total Streams</th>
+                    <th class="num-col">Total Growth</th>
+                    <th class="num-col" style="min-width: 140px;">Album Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${trackRowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
 
   if (albumsTbody) {
-    albumsTbody.innerHTML = albumRows.length > 0 
-      ? albumRows.join("") 
+    albumsTbody.innerHTML = albumRowsHtml.length > 0 
+      ? albumRowsHtml.join("") 
       : `<tr><td colspan="8" class="loading-cell">No album records found for selected filter on this date</td></tr>`;
   }
 }
@@ -1003,6 +1323,60 @@ document.addEventListener("click", (e) => {
 
   if (window._lastDayData) {
     renderRankingSections(window._lastDayData, window._lastTotalStreamsSum, window._lastDailyStreamsSum);
+  }
+});
+
+// Toggle album track breakdown on table row click
+document.addEventListener("click", (e) => {
+  const row = e.target.closest(".clickable-album-row");
+  if (!row) return;
+
+  const albId = row.dataset.albumId;
+  if (!albId) return;
+
+  const breakdownRow = document.getElementById(`breakdown-${albId}`);
+  const icon = row.querySelector(".album-expand-icon");
+
+  if (expandedAlbumIds.has(albId)) {
+    expandedAlbumIds.delete(albId);
+    row.classList.remove("is-expanded");
+    if (breakdownRow) breakdownRow.style.display = "none";
+    if (icon) icon.textContent = "▶";
+  } else {
+    expandedAlbumIds.add(albId);
+    row.classList.add("is-expanded");
+    if (breakdownRow) breakdownRow.style.display = "table-row";
+    if (icon) icon.textContent = "▼";
+  }
+});
+
+// Click Bento card to expand and scroll to album
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".clickable-bento-card");
+  if (!card) return;
+  const mKey = card.dataset.member;
+  if (!mKey) return;
+
+  // Ensure Albums view is active
+  if (activeRadarView !== "albums") {
+    activeRadarView = "albums";
+    updateRadarViewMode();
+    if (window._lastDayData) renderAlbumsSection(window._lastDayData);
+  }
+
+  // Find debut row for this member
+  const targetRow = document.querySelector(`.clickable-album-row[data-member="${mKey}"]`);
+  if (targetRow) {
+    const albId = targetRow.dataset.albumId;
+    const breakdownRow = document.getElementById(`breakdown-${albId}`);
+    const icon = targetRow.querySelector(".album-expand-icon");
+
+    expandedAlbumIds.add(albId);
+    targetRow.classList.add("is-expanded");
+    if (breakdownRow) breakdownRow.style.display = "table-row";
+    if (icon) icon.textContent = "▼";
+
+    targetRow.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 });
 

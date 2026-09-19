@@ -127,11 +127,12 @@ def build_snapshot():
             }
             songs_by_date.setdefault(d, []).append(song_obj)
 
-        # Sort songs by daily streams descending per date, keep top 5
+        # Sort songs by daily streams descending per date, keep top 5 and full list
         for d, s_list in songs_by_date.items():
             s_list.sort(key=lambda x: x["daily_streams"], reverse=True)
             if d in member_dates:
                 member_dates[d]["top_songs"] = s_list[:5]
+                member_dates[d]["all_songs"] = s_list
 
         # 3. Fetch Albums tab
         # In Albums: Col A=Date, Col B=Name, Col C=Total, Col D=Daily, Col E=Total Change, Col F=Daily Change

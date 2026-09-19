@@ -1004,6 +1004,261 @@ body {
   color: var(--text-main);
 }
 
+/* ====================================================
+   Album Projects Track Breakdown Accordion
+   ==================================================== */
+.clickable-album-row {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.18s ease;
+}
+
+.clickable-album-row:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.clickable-album-row.is-expanded {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.album-rank-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.album-expand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  line-height: 1;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease;
+}
+
+.clickable-album-row:hover .album-expand-icon {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-main);
+}
+
+.clickable-album-row.is-expanded .album-expand-icon {
+  background: var(--accent-color, #F59E0B);
+  color: #0b0f19;
+  font-weight: 800;
+  border-color: var(--accent-color, #F59E0B);
+}
+
+.track-count-badge {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.65rem !important;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.clickable-bento-card {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+.clickable-bento-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6);
+  border-color: var(--accent-color);
+}
+
+.bento-click-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 0.4rem;
+  opacity: 0.75;
+  font-weight: 600;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.clickable-bento-card:hover .bento-click-hint {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.album-breakdown-row {
+  background: rgba(11, 17, 33, 0.7) !important;
+}
+
+.album-breakdown-cell {
+  padding: 0 1.25rem 1.5rem 1.25rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.album-breakdown-panel {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95), rgba(10, 15, 29, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 4px solid var(--accent-color, #F59E0B);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px -8px rgba(0, 0, 0, 0.6);
+}
+
+.breakdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.breakdown-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.breakdown-disc-icon {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.breakdown-album-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 0.2rem;
+}
+
+.breakdown-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.breakdown-meta code {
+  color: #38BDF8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+}
+
+.breakdown-summary-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.summary-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+}
+
+.pill-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.pill-val {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.breakdown-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.breakdown-subtable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.breakdown-subtable th {
+  background: rgba(15, 23, 42, 0.9);
+  font-size: 0.68rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.breakdown-subtable td {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.breakdown-subtable tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.track-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.track-icon {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.track-name {
+  color: var(--text-main);
+}
+
+.share-progress-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.share-pct {
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 42px;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.share-bar-bg {
+  width: 65px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.share-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
 .loading-cell, .loading-placeholder {
   text-align: center;
   padding: 2.5rem;
