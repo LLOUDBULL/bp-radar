@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLACKPINK Solos • Consolidated Daily Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <header class="header-container">
+    <div class="brand-section">
+      <div class="brand-badge">KWORB STREAMING INTELLIGENCE</div>
+      <h1 class="brand-title">BLACKPINK <span class="gradient-text">Solo Radar</span></h1>
+      <p class="brand-subtitle">Cross-Member Consolidated Daily Spotify Streaming Telemetry</p>
+    </div>
+
+    <!-- Controls Toolbar -->
+    <div class="toolbar-section">
+      <!-- Engine Mode Toggle -->
+      <div class="engine-toggle-card">
+        <span class="control-label">DATA ENGINE</span>
+        <div class="toggle-switch-container">
+          <button id="engine-snapshot-btn" class="toggle-btn active" title="Instant offline edge JSON snapshot">
+            <span class="dot live-dot"></span> Snapshot (Opt B)
+          </button>
+          <button id="engine-live-btn" class="toggle-btn" title="Live Google Sheets gviz/tq SQL query">
+            <span class="icon">☁️</span> Live Sheets (Opt A)
+          </button>
+        </div>
+      </div>
+
+      <!-- Date Navigator -->
+      <div class="date-navigator-card">
+        <span class="control-label">TARGET DATE</span>
+        <div class="date-controls">
+          <button id="prev-date-btn" class="nav-btn" title="Previous Date">◀</button>
+          <div class="select-wrapper">
+            <select id="date-select" class="date-dropdown">
+              <option value="">Loading dates...</option>
+            </select>
+          </div>
+          <button id="next-date-btn" class="nav-btn" title="Next Date">▶</button>
+          <button id="latest-date-btn" class="quick-btn">Latest</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Query Status Bar -->
+  <div class="status-bar">
+    <div class="status-indicator">
+      <span class="status-pulse" id="status-pulse"></span>
+      <span id="status-text">Ready • Initializing snapshot engine...</span>
+    </div>
+    <div class="query-meta" id="query-meta">Latency: -- ms</div>
+  </div>
+
+  <main class="main-content">
+    <!-- Macro Summary Highlights -->
+    <section class="aggregate-banner">
+      <div class="aggregate-card">
+        <span class="agg-label">COMBINED 4-MEMBER TOTAL</span>
+        <div class="agg-val" id="agg-total-streams">--</div>
+        <div class="agg-sub" id="agg-total-change">--</div>
+      </div>
+      <div class="aggregate-card">
+        <span class="agg-label">COMBINED DAILY STREAMS</span>
+        <div class="agg-val" id="agg-daily-streams">--</div>
+        <div class="agg-sub" id="agg-daily-change">--</div>
+      </div>
+      <div class="aggregate-card">
+        <span class="agg-label">SOLO CATALOG TRACKS</span>
+        <div class="agg-val" id="agg-tracks">--</div>
+        <div class="agg-sub">Across all 4 solo discographies</div>
+      </div>
+      <div class="aggregate-card">
+        <span class="agg-label">TOP DAILY VELOCITY</span>
+        <div class="agg-val highlight-gold" id="agg-top-velocity">--</div>
+        <div class="agg-sub" id="agg-top-performer">--</div>
+      </div>
+    </section>
+
+    <!-- 4 Members Hero Bento Grid -->
+    <section class="section-container">
+      <div class="section-header">
+        <h2>Solo Discography Overview</h2>
+        <span class="section-tag" id="selected-date-badge">2026-09-17</span>
+      </div>
+
+      <div class="members-bento-grid" id="members-grid">
+        <!-- Injected via JavaScript -->
+        <div class="loading-placeholder">Loading member cards...</div>
+      </div>
+    </section>
+
+    <!-- Side-by-Side Comparative Ledger -->
+    <section class="section-container">
+      <div class="section-header">
+        <h2>Consolidated Cross-Member Metrics</h2>
+        <div class="table-actions">
+          <span class="badge">Click any row to open Google Sheet</span>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table" id="consolidated-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th class="num-col">Total Streams</th>
+                <th class="num-col">24h Change</th>
+                <th class="num-col">Daily Streams</th>
+                <th class="num-col">Daily Delta</th>
+                <th class="num-col">Solo Streams</th>
+                <th class="num-col">Solo %</th>
+                <th class="num-col">Tracks</th>
+                <th>Sheet Link</th>
+              </tr>
+            </thead>
+            <tbody id="consolidated-tbody">
+              <tr><td colspan="9" class="loading-cell">Loading comparative dataset...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Daily Songs Radar -->
+    <section class="section-container">
+      <div class="section-header">
+        <h2>Top Daily Songs Radar on <span id="radar-date-label">Selected Date</span></h2>
+        <span class="section-tag">Top 5 per member sorted by daily volume</span>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table" id="songs-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Track Title</th>
+                <th>Artist</th>
+                <th class="num-col">Daily Streams</th>
+                <th class="num-col">Daily Change</th>
+                <th class="num-col">Total Streams</th>
+                <th class="num-col">Total Growth</th>
+              </tr>
+            </thead>
+            <tbody id="songs-tbody">
+              <tr><td colspan="7" class="loading-cell">Loading track telemetry...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer-container">
+    <p>BLACKPINK Consolidated Solo Intelligence • Powered by Kworb Scraper Pipeline & Google Sheets API</p>
+    <p class="footer-sub">Supports dual data ingestion: Live Google Sheets <code>gviz/tq</code> queries and pre-compiled Edge JSON snapshots.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
