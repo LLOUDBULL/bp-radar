@@ -195,14 +195,45 @@
       </div>
     </section>
 
-    <!-- Top Daily Songs Radar -->
-    <section class="section-container">
-      <div class="section-header">
-        <h2>Top Daily Songs Radar on <span id="radar-date-label">Selected Date</span></h2>
-        <span class="section-tag">Top 5 per member sorted by daily volume</span>
+    <!-- Streaming Telemetry & Radar (Tracks & Albums) -->
+    <section class="section-container" id="radar-section">
+      <div class="section-header radar-header">
+        <div class="radar-title-group">
+          <h2 id="radar-main-title">Top Daily Songs Radar on <span id="radar-date-label">Selected Date</span></h2>
+          <span class="section-tag" id="radar-sub-tag">Top 5 per member sorted by daily volume</span>
+        </div>
+
+        <!-- Radar View Mode Switcher -->
+        <div class="view-toggle-container">
+          <button id="view-tracks-btn" class="toggle-pill active" title="View track-level streaming radar">
+            <span>🎵 Top Tracks</span>
+          </button>
+          <button id="view-albums-btn" class="toggle-pill" title="View album project metrics from Albums tab">
+            <span>💿 Album Projects</span>
+          </button>
+        </div>
       </div>
 
-      <div class="table-card">
+      <!-- Album Projects Sub-filter Bar (Active in Albums mode) -->
+      <div class="album-filter-bar" id="album-filter-bar" style="display: none;">
+        <span class="filter-label">FILTER ALBUMS:</span>
+        <div class="filter-pills-group">
+          <button class="album-filter-pill active" data-filter="all">All Album Projects</button>
+          <button class="album-filter-pill" data-filter="debut">🌟 4 Debut Studio LPs Only</button>
+          <button class="album-filter-pill" data-filter="Lisa">Lisa</button>
+          <button class="album-filter-pill" data-filter="Jennie">Jennie</button>
+          <button class="album-filter-pill" data-filter="Rose">Rosé</button>
+          <button class="album-filter-pill" data-filter="Jisoo">Jisoo</button>
+        </div>
+      </div>
+
+      <!-- 4 Debut Solo Albums Bento Benchmark Cards (Active in Albums mode) -->
+      <div class="album-bento-grid" id="album-bento-grid" style="display: none;">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <!-- Tracks Table -->
+      <div class="table-card" id="tracks-table-card">
         <div class="table-responsive">
           <table class="data-table" id="songs-table">
             <thead>
@@ -218,6 +249,29 @@
             </thead>
             <tbody id="songs-tbody">
               <tr><td colspan="7" class="loading-cell">Loading track telemetry...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Albums Table (Active in Albums mode) -->
+      <div class="table-card" id="albums-table-card" style="display: none;">
+        <div class="table-responsive">
+          <table class="data-table" id="albums-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Album Project</th>
+                <th>Artist</th>
+                <th>Category</th>
+                <th class="num-col">Daily Streams</th>
+                <th class="num-col">Daily Change</th>
+                <th class="num-col">Total Streams</th>
+                <th class="num-col">Total Growth</th>
+              </tr>
+            </thead>
+            <tbody id="albums-tbody">
+              <tr><td colspan="8" class="loading-cell">Loading album telemetry...</td></tr>
             </tbody>
           </table>
         </div>

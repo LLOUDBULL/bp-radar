@@ -50,6 +50,10 @@ const rankActiveTabs = {
   "catalog": "total"
 };
 
+// Radar View & Album Filter State
+let activeRadarView = "tracks"; // "tracks" or "albums"
+let activeAlbumFilter = "all"; // "all", "debut", "Lisa", "Jennie", "Rose", "Jisoo"
+
 // DOM Elements
 const dateSelect = document.getElementById("date-select");
 const prevDateBtn = document.getElementById("prev-date-btn");
@@ -74,6 +78,16 @@ const consolidatedTbody = document.getElementById("consolidated-tbody");
 const songsTbody = document.getElementById("songs-tbody");
 const selectedDateBadge = document.getElementById("selected-date-badge");
 const radarDateLabel = document.getElementById("radar-date-label");
+
+const viewTracksBtn = document.getElementById("view-tracks-btn");
+const viewAlbumsBtn = document.getElementById("view-albums-btn");
+const albumFilterBar = document.getElementById("album-filter-bar");
+const albumBentoGrid = document.getElementById("album-bento-grid");
+const tracksTableCard = document.getElementById("tracks-table-card");
+const albumsTableCard = document.getElementById("albums-table-card");
+const albumsTbody = document.getElementById("albums-tbody");
+const radarMainTitle = document.getElementById("radar-main-title");
+const radarSubTag = document.getElementById("radar-sub-tag");
 
 // Number Formatting Helpers
 function fmt(num) {
@@ -195,6 +209,23 @@ async function fetchLiveData(targetDate) {
         }));
       } catch (e) {
         console.warn(`Could not query Songs for ${key}:`, e);
+      }
+
+      // 3. Fetch Albums for date
+      try {
+        const albumsQuery = `SELECT B, C, D, E, F WHERE A = '${targetDate}' ORDER BY D DESC`;
+        const albumsData = await queryGviz(meta.id, "Albums", albumsQuery);
+        const aRows = albumsData.table?.rows || [];
+        parsed.albums = aRows.map(ar => ({
+          name: ar.c[0]?.v || "Unknown",
+          total_streams: ar.c[1]?.v || 0,
+          daily_streams: ar.c[2]?.v || 0,
+          total_change: ar.c[3]?.v || 0,
+          daily_change: ar.c[4]?.v || 0
+        }));
+      } catch (e) {
+        console.warn(`Could not query Albums for ${key}:`, e);
+        parsed.albums = [];
       }
 
       return [key, parsed];
@@ -400,6 +431,10 @@ async function renderCurrentView() {
     </tr>
   `);
   songsTbody.innerHTML = songRows.length > 0 ? songRows.join("") : `<tr><td colspan="7" class="loading-cell">No song data for this date</td></tr>`;
+
+  // Render Albums Section
+  renderAlbumsSection(dayData);
+  updateRadarViewMode();
 }
 
 // ----------------------------------------------------
@@ -740,6 +775,218 @@ latestDateBtn.addEventListener("click", () => {
   }
 });
 
+// ----------------------------------------------------
+// Album Telemetry & Projects Engine
+// ----------------------------------------------------
+function updateRadarViewMode() {
+  if (activeRadarView === "tracks") {
+    if (viewTracksBtn) viewTracksBtn.classList.add("active");
+    if (viewAlbumsBtn) viewAlbumsBtn.classList.remove("active");
+    if (tracksTableCard) tracksTableCard.style.display = "block";
+    if (albumsTableCard) albumsTableCard.style.display = "none";
+    if (albumFilterBar) albumFilterBar.style.display = "none";
+    if (albumBentoGrid) albumBentoGrid.style.display = "none";
+    if (radarMainTitle) radarMainTitle.innerHTML = `Top Daily Songs Radar on <span id="radar-date-label">${currentDate}</span>`;
+    if (radarSubTag) radarSubTag.textContent = "Top 5 per member sorted by daily volume";
+  } else {
+    if (viewAlbumsBtn) viewAlbumsBtn.classList.add("active");
+    if (viewTracksBtn) viewTracksBtn.classList.remove("active");
+    if (tracksTableCard) tracksTableCard.style.display = "none";
+    if (albumsTableCard) albumsTableCard.style.display = "block";
+    if (albumFilterBar) albumFilterBar.style.display = "flex";
+    if (albumBentoGrid) albumBentoGrid.style.display = "grid";
+    if (radarMainTitle) radarMainTitle.innerHTML = `Album Projects Telemetry on <span id="radar-date-label">${currentDate}</span>`;
+    if (radarSubTag) radarSubTag.textContent = "Multi-edition album tracking from Kworb Albums tab";
+  }
+}
+
+function renderAlbumsSection(dayData) {
+  if (!dayData) return;
+
+  const allAlbums = [];
+  const debutLpMap = {};
+
+  Object.entries(MEMBERS).forEach(([key, meta]) => {
+    const mData = dayData[key] || {};
+    const albums = mData.albums || [];
+
+    albums.forEach(alb => {
+      const cleanName = (alb.name || "").toLowerCase();
+      let isDebut = false;
+      let category = "Project / EP";
+
+      if (key === "Rose" && cleanName.includes("rosie")) {
+        isDebut = true;
+        category = "Debut Studio LP";
+      } else if (key === "Jennie" && cleanName.includes("ruby")) {
+        isDebut = true;
+        category = cleanName.includes("complete") ? "Complete Collection LP" : "Debut Studio LP";
+      } else if (key === "Lisa" && cleanName.includes("alter ego")) {
+        isDebut = true;
+        category = "Debut Studio LP";
+      } else if (key === "Jisoo" && cleanName.includes("amortage")) {
+        isDebut = true;
+        category = "Debut Studio LP";
+      } else if (cleanName.includes("canciones")) {
+        category = "Editorial Compilation";
+      }
+
+      const albEntry = {
+        ...alb,
+        memberKey: key,
+        artist: meta.displayName,
+        accent: meta.accent,
+        avatar: meta.avatar,
+        isDebut,
+        category
+      };
+
+      allAlbums.push(albEntry);
+
+      // Track the top edition of the debut album for the Bento card
+      if (isDebut) {
+        if (!debutLpMap[key] || alb.total_streams > debutLpMap[key].total_streams) {
+          debutLpMap[key] = albEntry;
+        }
+      }
+    });
+  });
+
+  // 1. Render 4 Debut Solo Studio Albums Bento Benchmark Cards
+  const topDebutTotal = Math.max(...Object.values(debutLpMap).map(a => a.total_streams || 0), 1);
+  const debutCardsHtml = Object.entries(MEMBERS).map(([key, meta]) => {
+    const alb = debutLpMap[key] || {
+      name: key === "Rose" ? "rosie" : key === "Jennie" ? "Ruby" : key === "Lisa" ? "Alter Ego" : "AMORTAGE",
+      total_streams: 0,
+      daily_streams: 0,
+      total_change: 0,
+      daily_change: 0,
+      isDebut: true,
+      artist: meta.displayName,
+      accent: meta.accent,
+      avatar: meta.avatar
+    };
+
+    const barPct = topDebutTotal > 0 ? (alb.total_streams / topDebutTotal) * 100 : 0;
+
+    return `
+      <div class="album-card" style="--accent-color: ${meta.accent};">
+        <div class="album-card-header">
+          <div class="album-card-artist">
+            <img src="${meta.avatar}" alt="${meta.displayName}" class="album-card-avatar" style="border: 2px solid ${meta.accent};" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
+            <span class="member-name" style="font-size: 0.9rem;">${meta.displayName}</span>
+          </div>
+          <span class="album-badge debut">Debut Studio LP</span>
+        </div>
+
+        <div class="album-card-title">💿 ${alb.name}</div>
+
+        <div class="album-metrics">
+          <div class="album-metric-item">
+            <span class="album-metric-label">TOTAL STREAMS</span>
+            <div class="album-metric-val">${fmtCompact(alb.total_streams)}</div>
+            ${fmtChange(alb.total_change)}
+          </div>
+          <div class="album-metric-item">
+            <span class="album-metric-label">DAILY VELOCITY</span>
+            <div class="album-metric-val">+${fmtCompact(alb.daily_streams)}</div>
+            ${fmtChange(alb.daily_change)}
+          </div>
+        </div>
+
+        <div class="progress-group" style="margin-top: 0.2rem;">
+          <div class="progress-header" style="font-size: 0.72rem;">
+            <span class="text-dim">Benchmark vs #1 Debut LP</span>
+            <span class="font-mono">${barPct.toFixed(1)}%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: ${Math.min(Math.max(barPct, 2), 100)}%; background: ${meta.accent};"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (albumBentoGrid) {
+    albumBentoGrid.innerHTML = debutCardsHtml;
+  }
+
+  // 2. Filter & Sort Albums for the Table
+  let filteredAlbums = [...allAlbums];
+
+  if (activeAlbumFilter === "debut") {
+    filteredAlbums = filteredAlbums.filter(a => a.isDebut);
+  } else if (["Lisa", "Jennie", "Rose", "Jisoo"].includes(activeAlbumFilter)) {
+    filteredAlbums = filteredAlbums.filter(a => a.memberKey === activeAlbumFilter);
+  }
+
+  // Sort by daily streams descending
+  filteredAlbums.sort((a, b) => b.daily_streams - a.daily_streams);
+
+  const albumRows = filteredAlbums.map((a, idx) => `
+    <tr>
+      <td class="font-mono">#${idx + 1}</td>
+      <td>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span>💿</span>
+          <strong>${a.name}</strong>
+          ${a.isDebut ? '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem;">Debut LP</span>' : ''}
+        </div>
+      </td>
+      <td>
+        <div class="table-member-cell">
+          <img src="${a.avatar}" alt="${a.artist}" class="table-avatar" style="border: 2px solid ${a.accent};" onerror="this.src=getAvatarFallback('${a.artist}', '${a.accent}')">
+          <span style="color: ${a.accent}; font-weight: 700;">${a.artist}</span>
+        </div>
+      </td>
+      <td><span class="badge">${a.category}</span></td>
+      <td class="num-col"><strong>+${fmt(a.daily_streams)}</strong></td>
+      <td class="num-col">${fmtChange(a.daily_change)}</td>
+      <td class="num-col">${fmt(a.total_streams)}</td>
+      <td class="num-col">${fmtChange(a.total_change)}</td>
+    </tr>
+  `);
+
+  if (albumsTbody) {
+    albumsTbody.innerHTML = albumRows.length > 0 
+      ? albumRows.join("") 
+      : `<tr><td colspan="8" class="loading-cell">No album records found for selected filter on this date</td></tr>`;
+  }
+}
+
+// ----------------------------------------------------
+// Event Listeners & Navigation
+// ----------------------------------------------------
+if (viewTracksBtn) {
+  viewTracksBtn.addEventListener("click", () => {
+    activeRadarView = "tracks";
+    updateRadarViewMode();
+  });
+}
+
+if (viewAlbumsBtn) {
+  viewAlbumsBtn.addEventListener("click", () => {
+    activeRadarView = "albums";
+    updateRadarViewMode();
+    if (window._lastDayData) renderAlbumsSection(window._lastDayData);
+  });
+}
+
+// Album Filter Pill Listeners
+document.addEventListener("click", (e) => {
+  const pill = e.target.closest(".album-filter-pill");
+  if (!pill) return;
+  const filter = pill.dataset.filter;
+  if (!filter) return;
+
+  const parent = pill.parentElement;
+  parent.querySelectorAll(".album-filter-pill").forEach(p => p.classList.remove("active"));
+  pill.classList.add("active");
+
+  activeAlbumFilter = filter;
+  if (window._lastDayData) renderAlbumsSection(window._lastDayData);
+});
+
 // Tab switching for comparative ranking cards
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".rank-tab-btn");
@@ -763,4 +1010,5 @@ document.addEventListener("click", (e) => {
 document.addEventListener("DOMContentLoaded", () => {
   loadSnapshot();
 });
+
 

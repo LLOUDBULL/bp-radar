@@ -804,6 +804,206 @@ body {
   transition: width 0.4s ease;
 }
 
+/* ====================================================
+   Radar View Switcher & Album Projects Hub
+   ==================================================== */
+.radar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.radar-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.view-toggle-container {
+  display: flex;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.toggle-pill {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.45rem 0.95rem;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.toggle-pill:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.toggle-pill.active {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.22), rgba(56, 189, 248, 0.22));
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Album Filter Bar */
+.album-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.filter-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.filter-pills-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.album-filter-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.album-filter-pill:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.album-filter-pill.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.3);
+  font-weight: 700;
+}
+
+/* Album Bento Grid */
+.album-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.album-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.album-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-accent);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+.album-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.album-card-artist {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.album-card-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.album-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.album-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.album-badge.debut {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(236, 72, 153, 0.2));
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.album-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.album-metric-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.album-metric-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+}
+
 .loading-cell, .loading-placeholder {
   text-align: center;
   padding: 2.5rem;

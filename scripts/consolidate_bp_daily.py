@@ -133,6 +133,31 @@ def build_snapshot():
             if d in member_dates:
                 member_dates[d]["top_songs"] = s_list[:5]
 
+        # 3. Fetch Albums tab
+        # In Albums: Col A=Date, Col B=Name, Col C=Total, Col D=Daily, Col E=Total Change, Col F=Daily Change
+        try:
+            res_albums = service.spreadsheets().values().get(spreadsheetId=sid, range="Albums!A2:F").execute()
+            albums_rows = res_albums.get("values", [])
+            albums_by_date = {}
+            for r in albums_rows:
+                if not r or len(r) < 4: continue
+                d = r[0].strip()
+                alb_obj = {
+                    "name": r[1].strip(),
+                    "total_streams": clean_int(r[2]),
+                    "daily_streams": clean_int(r[3]),
+                    "total_change": clean_int(r[4]) if len(r) > 4 else 0,
+                    "daily_change": clean_int(r[5]) if len(r) > 5 else 0
+                }
+                albums_by_date.setdefault(d, []).append(alb_obj)
+
+            for d, a_list in albums_by_date.items():
+                a_list.sort(key=lambda x: x["daily_streams"], reverse=True)
+                if d in member_dates:
+                    member_dates[d]["albums"] = a_list
+        except Exception as e:
+            print(f"Warning: Could not fetch Albums for {name}: {e}")
+
         # Populate into consolidated structure
         for d, d_data in member_dates.items():
             if d not in consolidated_by_date:
@@ -145,18 +170,29 @@ def build_snapshot():
     # Forward-fill any missing member entries chronologically (oldest to newest)
     chronological_dates = sorted(list(all_dates))
     last_known = {}
+    last_known_albums = {}
     for d in chronological_dates:
         day_dict = consolidated_by_date.get(d, {})
         for name in MEMBERS.keys():
             if name in day_dict and day_dict[name].get("streams", {}).get("total", 0) > 0:
                 last_known[name] = day_dict[name]
+                if day_dict[name].get("albums"):
+                    last_known_albums[name] = day_dict[name]["albums"]
             elif name not in day_dict and name in last_known:
                 # Carry forward last known catalog and streams, set delta to 0
                 carried = json.loads(json.dumps(last_known[name]))
                 carried["streams"]["total_change"] = 0
                 carried["daily"]["total_change"] = 0
                 carried["is_carried_forward"] = True
+                if name in last_known_albums and "albums" not in carried:
+                    carried["albums"] = json.loads(json.dumps(last_known_albums[name]))
                 day_dict[name] = carried
+
+            # Also ensure albums are carried forward if day_dict[name] exists but albums was empty on that day
+            if name in day_dict:
+                if not day_dict[name].get("albums") and name in last_known_albums:
+                    day_dict[name]["albums"] = json.loads(json.dumps(last_known_albums[name]))
+
         consolidated_by_date[d] = day_dict
 
     payload = {
