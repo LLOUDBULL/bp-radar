@@ -25,23 +25,23 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "bp_daily_snapshot.json")
 MEMBERS = {
     "Lisa": {
         "id": "1I81HxbHsWNrMCE4WMeYJJUN9Uc4zPHsLJ_5D_04wE2k",
-        "avatar": "https://i.scdn.co/image/ab6761610000e5ebc58f0efd9a4fbe29f3c7e096",
+        "avatar": "./assets/images/lisa.jpg",
         "accent": "#F59E0B"
     },
     "Jennie": {
         "id": "1MMZWR-gsyHUEoOTHkbUAoQyOD7xA1qOSBarwOwphRjY",
-        "avatar": "https://i.scdn.co/image/ab6761610000e5ebba9a98ef1f7051df4b8826c7",
+        "avatar": "./assets/images/jennie.jpg",
         "accent": "#EC4899"
     },
     "Rose": {
         "id": "1MtZ_LEXXpNSsKaPnow-RkJee8RWLd-V_vY0EZbMfM4U",
         "displayName": "Rosé",
-        "avatar": "https://i.scdn.co/image/ab6761610000e5ebfc3e0ee0c463a89307775199",
+        "avatar": "./assets/images/rose.jpg",
         "accent": "#38BDF8"
     },
     "Jisoo": {
         "id": "1d4r2ZSFAhL_s7Qqap93LeW97NKXcTxmWPQEA7YUWms8",
-        "avatar": "https://i.scdn.co/image/ab6761610000e5eb5a1ef4c2975949d8858a8a49",
+        "avatar": "./assets/images/jisoo.jpg",
         "accent": "#A855F7"
     }
 }
@@ -141,6 +141,23 @@ def build_snapshot():
 
     sorted_dates = sorted(list(all_dates), reverse=True)
     latest_date = sorted_dates[0] if sorted_dates else ""
+
+    # Forward-fill any missing member entries chronologically (oldest to newest)
+    chronological_dates = sorted(list(all_dates))
+    last_known = {}
+    for d in chronological_dates:
+        day_dict = consolidated_by_date.get(d, {})
+        for name in MEMBERS.keys():
+            if name in day_dict and day_dict[name].get("streams", {}).get("total", 0) > 0:
+                last_known[name] = day_dict[name]
+            elif name not in day_dict and name in last_known:
+                # Carry forward last known catalog and streams, set delta to 0
+                carried = json.loads(json.dumps(last_known[name]))
+                carried["streams"]["total_change"] = 0
+                carried["daily"]["total_change"] = 0
+                carried["is_carried_forward"] = True
+                day_dict[name] = carried
+        consolidated_by_date[d] = day_dict
 
     payload = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

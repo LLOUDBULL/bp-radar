@@ -98,6 +98,70 @@
       </div>
     </section>
 
+    <!-- Comparative Rankings & Head-to-Head Leaders -->
+    <section class="section-container">
+      <div class="section-header">
+        <h2>Comparative Rankings & Solo Intelligence</h2>
+        <span class="section-tag" id="ranking-date-tag">Ranked Metrics for Selected Date</span>
+      </div>
+
+      <div class="rankings-grid">
+        <!-- Card 1: Pure Solo Supremacy -->
+        <div class="rank-card" id="card-pure-solo">
+          <div class="rank-card-header">
+            <div class="rank-card-info">
+              <span class="rank-card-title">🎙️ Pure Solo Songs</span>
+              <span class="rank-card-desc">Solo vocals only • Features & collabs excluded</span>
+            </div>
+            <div class="rank-tabs">
+              <button class="rank-tab-btn active" data-target="pure-solo" data-metric="total">Total</button>
+              <button class="rank-tab-btn" data-target="pure-solo" data-metric="daily">Daily</button>
+              <button class="rank-tab-btn" data-target="pure-solo" data-metric="ratio">Share %</button>
+            </div>
+          </div>
+          <div class="rank-list" id="rank-list-pure-solo">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Card 2: Weekly Momentum (7-Day Rolling) -->
+        <div class="rank-card" id="card-weekly">
+          <div class="rank-card-header">
+            <div class="rank-card-info">
+              <span class="rank-card-title">📈 Weekly Momentum</span>
+              <span class="rank-card-desc">7-day rolling window up to target date</span>
+            </div>
+            <div class="rank-tabs">
+              <button class="rank-tab-btn active" data-target="weekly" data-metric="total">7d Total</button>
+              <button class="rank-tab-btn" data-target="weekly" data-metric="avg">Daily Avg</button>
+              <button class="rank-tab-btn" data-target="weekly" data-metric="share">Share %</button>
+            </div>
+          </div>
+          <div class="rank-list" id="rank-list-weekly">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Card 3: Catalog Power & Lead Breakdown -->
+        <div class="rank-card" id="card-catalog">
+          <div class="rank-card-header">
+            <div class="rank-card-info">
+              <span class="rank-card-title">👑 Catalog Dominance</span>
+              <span class="rank-card-desc">All releases • Solo market share & lead split</span>
+            </div>
+            <div class="rank-tabs">
+              <button class="rank-tab-btn active" data-target="catalog" data-metric="total">Catalog</button>
+              <button class="rank-tab-btn" data-target="catalog" data-metric="daily">Velocity</button>
+              <button class="rank-tab-btn" data-target="catalog" data-metric="lead">Lead vs Collab</button>
+            </div>
+          </div>
+          <div class="rank-list" id="rank-list-catalog">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Side-by-Side Comparative Ledger -->
     <section class="section-container">
       <div class="section-header">

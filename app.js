@@ -10,32 +10,45 @@ const MEMBERS = {
     id: "1I81HxbHsWNrMCE4WMeYJJUN9Uc4zPHsLJ_5D_04wE2k",
     displayName: "Lisa",
     accent: "#F59E0B",
-    avatar: "https://i.scdn.co/image/ab6761610000e5ebc58f0efd9a4fbe29f3c7e096"
+    avatar: "./assets/images/lisa.jpg"
   },
   "Jennie": {
     id: "1MMZWR-gsyHUEoOTHkbUAoQyOD7xA1qOSBarwOwphRjY",
     displayName: "Jennie",
     accent: "#EC4899",
-    avatar: "https://i.scdn.co/image/ab6761610000e5ebba9a98ef1f7051df4b8826c7"
+    avatar: "./assets/images/jennie.jpg"
   },
   "Rose": {
     id: "1MtZ_LEXXpNSsKaPnow-RkJee8RWLd-V_vY0EZbMfM4U",
     displayName: "Rosé",
     accent: "#38BDF8",
-    avatar: "https://i.scdn.co/image/ab6761610000e5ebfc3e0ee0c463a89307775199"
+    avatar: "./assets/images/rose.jpg"
   },
   "Jisoo": {
     id: "1d4r2ZSFAhL_s7Qqap93LeW97NKXcTxmWPQEA7YUWms8",
     displayName: "Jisoo",
     accent: "#A855F7",
-    avatar: "https://i.scdn.co/image/ab6761610000e5eb5a1ef4c2975949d8858a8a49"
+    avatar: "./assets/images/jisoo.jpg"
   }
 };
+
+function getAvatarFallback(displayName, accent) {
+  const initial = (displayName || "B").charAt(0);
+  const color = encodeURIComponent(accent || "#EC4899");
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%231E293B"/><circle cx="30" cy="30" r="22" fill="${color}" opacity="0.25"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="${color}" font-family="system-ui,-apple-system,sans-serif" font-size="24" font-weight="700">${initial}</text></svg>`;
+}
 
 let currentEngine = "snapshot"; // "snapshot" or "live"
 let snapshotData = null;
 let currentDate = "";
 let availableDates = [];
+
+// Comparative Rankings Tab State
+const rankActiveTabs = {
+  "pure-solo": "total",
+  "weekly": "total",
+  "catalog": "total"
+};
 
 // DOM Elements
 const dateSelect = document.getElementById("date-select");
@@ -289,7 +302,7 @@ async function renderCurrentView() {
       <div class="member-card" style="--accent-color: ${meta.accent};">
         <div class="member-card-header">
           <div class="avatar-wrapper">
-            <img src="${meta.avatar}" alt="${meta.displayName}" class="member-avatar" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'50\\' height=\\'50\\'><rect fill=\\'%231E293B\\' width=\\'50\\' height=\\'50\\'/></svg>'">
+            <img src="${meta.avatar}" alt="${meta.displayName}" class="member-avatar" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
           </div>
           <div class="member-name-group">
             <span class="member-name">${meta.displayName}</span>
@@ -332,7 +345,7 @@ async function renderCurrentView() {
       <tr>
         <td>
           <div class="table-member-cell">
-            <img src="${meta.avatar}" alt="${meta.displayName}" class="table-avatar" style="border: 2px solid ${meta.accent};">
+            <img src="${meta.avatar}" alt="${meta.displayName}" class="table-avatar" style="border: 2px solid ${meta.accent};" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
             <span>${meta.displayName}</span>
           </div>
         </td>
@@ -365,6 +378,14 @@ async function renderCurrentView() {
   membersGrid.innerHTML = memberCardsHtml.join("");
   consolidatedTbody.innerHTML = tableRows.join("");
 
+  // Save for ranking tab rerenders
+  window._lastDayData = dayData;
+  window._lastTotalStreamsSum = totalStreamsSum;
+  window._lastDailyStreamsSum = dailyStreamsSum;
+
+  // Render Comparative Rankings
+  renderRankingSections(dayData, totalStreamsSum, dailyStreamsSum);
+
   // Render Top Songs Radar (sorted by daily streams descending)
   combinedTopSongs.sort((a, b) => b.daily_streams - a.daily_streams);
   const songRows = combinedTopSongs.slice(0, 10).map((s, idx) => `
@@ -379,6 +400,286 @@ async function renderCurrentView() {
     </tr>
   `);
   songsTbody.innerHTML = songRows.length > 0 ? songRows.join("") : `<tr><td colspan="7" class="loading-cell">No song data for this date</td></tr>`;
+}
+
+// ----------------------------------------------------
+// Comparative Rankings Engine
+// ----------------------------------------------------
+function renderRankingSections(dayData, totalStreamsSum, dailyStreamsSum) {
+  if (!dayData) return;
+  const rankingDateTag = document.getElementById("ranking-date-tag");
+  if (rankingDateTag) rankingDateTag.textContent = `Ranked Metrics for ${currentDate}`;
+
+  // 1. Gather comprehensive metrics across all 4 members
+  const memberList = Object.entries(MEMBERS).map(([key, meta]) => {
+    const mData = dayData[key] || {};
+    const streams = mData.streams || {};
+    const daily = mData.daily || {};
+
+    const catalogTotal = streams.total || 0;
+    const catalogSolo = streams.solo || 0;
+    const catalogLead = streams.lead || 0;
+    const catalogFeature = streams.feature || 0;
+    const dailyTotal = daily.total || 0;
+    const dailySolo = daily.solo || 0;
+    const dailyLead = daily.lead || 0;
+    const dailyFeature = daily.feature || 0;
+
+    const soloRatio = streams.solo_ratio ? streams.solo_ratio * 100 : (catalogTotal > 0 ? (catalogSolo / catalogTotal) * 100 : 0);
+    const leadRatio = streams.lead_ratio ? streams.lead_ratio * 100 : (catalogTotal > 0 ? (catalogLead / catalogTotal) * 100 : 0);
+    const catalogShare = (totalStreamsSum && totalStreamsSum > 0) ? (catalogTotal / totalStreamsSum) * 100 : 0;
+    const dailyShare = (dailyStreamsSum && dailyStreamsSum > 0) ? (dailyTotal / dailyStreamsSum) * 100 : 0;
+
+    // 7-day rolling window calculation
+    let weeklyTotal = 0;
+    let windowLen = 0;
+    if (availableDates.length > 0) {
+      const cIdx = availableDates.indexOf(currentDate);
+      const startIdx = cIdx >= 0 ? cIdx : 0;
+      const windowDates = availableDates.slice(startIdx, Math.min(startIdx + 7, availableDates.length));
+      windowLen = windowDates.length;
+      if (snapshotData && snapshotData.dates_data) {
+        windowDates.forEach(dt => {
+          const dRec = snapshotData.dates_data[dt]?.[key];
+          if (dRec && dRec.daily && dRec.daily.total) {
+            weeklyTotal += dRec.daily.total;
+          }
+        });
+      }
+    }
+    if (weeklyTotal === 0 && dailyTotal > 0) {
+      weeklyTotal = dailyTotal * (windowLen || 7);
+    }
+    const weeklyAvg = windowLen > 0 ? Math.round(weeklyTotal / windowLen) : dailyTotal;
+
+    return {
+      key,
+      meta,
+      displayName: meta.displayName,
+      avatar: meta.avatar,
+      accent: meta.accent,
+      catalogTotal,
+      catalogSolo,
+      catalogLead,
+      catalogFeature,
+      dailyTotal,
+      dailySolo,
+      dailyLead,
+      dailyFeature,
+      soloRatio,
+      leadRatio,
+      catalogShare,
+      dailyShare,
+      weeklyTotal,
+      weeklyAvg,
+      windowLen
+    };
+  });
+
+  // Calculate 4-member weekly combined
+  const weeklyCombined = memberList.reduce((acc, m) => acc + m.weeklyTotal, 0);
+  memberList.forEach(m => {
+    m.weeklyShare = weeklyCombined > 0 ? (m.weeklyTotal / weeklyCombined) * 100 : 0;
+  });
+
+  const getRankPosClass = (rank) => {
+    if (rank === 1) return "gold";
+    if (rank === 2) return "silver";
+    if (rank === 3) return "bronze";
+    return "sub";
+  };
+
+  // ----------------------------------------------------
+  // Card 1: Pure Solo Supremacy
+  // ----------------------------------------------------
+  const pureMetric = rankActiveTabs["pure-solo"] || "total";
+  let sortedPure = [...memberList];
+  if (pureMetric === "total") {
+    sortedPure.sort((a, b) => b.catalogSolo - a.catalogSolo);
+  } else if (pureMetric === "daily") {
+    sortedPure.sort((a, b) => b.dailySolo - a.dailySolo);
+  } else if (pureMetric === "ratio") {
+    sortedPure.sort((a, b) => b.soloRatio - a.soloRatio);
+  }
+
+  const topPureVal = sortedPure[0] ? (
+    pureMetric === "total" ? sortedPure[0].catalogSolo :
+    pureMetric === "daily" ? sortedPure[0].dailySolo :
+    100
+  ) : 1;
+
+  const pureSoloHtml = sortedPure.map((m, idx) => {
+    const rank = idx + 1;
+    let mainVal = "";
+    let subVal = "";
+    let barPct = 0;
+
+    if (pureMetric === "total") {
+      mainVal = fmtCompact(m.catalogSolo);
+      subVal = `${fmt(m.catalogSolo)} total solo`;
+      barPct = topPureVal > 0 ? (m.catalogSolo / topPureVal) * 100 : 0;
+    } else if (pureMetric === "daily") {
+      mainVal = `+${fmtCompact(m.dailySolo)}`;
+      subVal = `+${fmt(m.dailySolo)}/d solo streams`;
+      barPct = topPureVal > 0 ? (m.dailySolo / topPureVal) * 100 : 0;
+    } else if (pureMetric === "ratio") {
+      mainVal = `${m.soloRatio.toFixed(1)}%`;
+      subVal = `${fmtCompact(m.catalogSolo)} solo (${m.soloRatio.toFixed(1)}% of total)`;
+      barPct = Math.min(m.soloRatio, 100);
+    }
+
+    return `
+      <div class="rank-item">
+        <div class="rank-item-main">
+          <div class="rank-item-left">
+            <span class="rank-pos ${getRankPosClass(rank)}">${rank}</span>
+            <img src="${m.avatar}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
+            <div class="rank-details">
+              <span class="rank-name">${m.displayName}</span>
+              <span class="rank-meta">${pureMetric === 'ratio' ? 'Pure Solo Share' : 'Solo Discography'}</span>
+            </div>
+          </div>
+          <div class="rank-item-right">
+            <span class="rank-val">${mainVal}</span>
+            <span class="rank-subval">${subVal}</span>
+          </div>
+        </div>
+        <div class="rank-bar-bg">
+          <div class="rank-bar-fill" style="width: ${Math.min(Math.max(barPct, 2), 100)}%; background: ${m.accent};"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+  const pureListEl = document.getElementById("rank-list-pure-solo");
+  if (pureListEl) pureListEl.innerHTML = pureSoloHtml;
+
+  // ----------------------------------------------------
+  // Card 2: Weekly Momentum (7-Day Rolling)
+  // ----------------------------------------------------
+  const weeklyMetric = rankActiveTabs["weekly"] || "total";
+  let sortedWeekly = [...memberList];
+  if (weeklyMetric === "total") {
+    sortedWeekly.sort((a, b) => b.weeklyTotal - a.weeklyTotal);
+  } else if (weeklyMetric === "avg") {
+    sortedWeekly.sort((a, b) => b.weeklyAvg - a.weeklyAvg);
+  } else if (weeklyMetric === "share") {
+    sortedWeekly.sort((a, b) => b.weeklyShare - a.weeklyShare);
+  }
+
+  const topWeeklyVal = sortedWeekly[0] ? (
+    weeklyMetric === "total" ? sortedWeekly[0].weeklyTotal :
+    weeklyMetric === "avg" ? sortedWeekly[0].weeklyAvg :
+    100
+  ) : 1;
+
+  const weeklyHtml = sortedWeekly.map((m, idx) => {
+    const rank = idx + 1;
+    let mainVal = "";
+    let subVal = "";
+    let barPct = 0;
+
+    if (weeklyMetric === "total") {
+      mainVal = `+${fmtCompact(m.weeklyTotal)}`;
+      subVal = `+${fmt(m.weeklyTotal)} in past 7d`;
+      barPct = topWeeklyVal > 0 ? (m.weeklyTotal / topWeeklyVal) * 100 : 0;
+    } else if (weeklyMetric === "avg") {
+      mainVal = `+${fmtCompact(m.weeklyAvg)}/d`;
+      subVal = `7-day avg daily rate`;
+      barPct = topWeeklyVal > 0 ? (m.weeklyAvg / topWeeklyVal) * 100 : 0;
+    } else if (weeklyMetric === "share") {
+      mainVal = `${m.weeklyShare.toFixed(1)}%`;
+      subVal = `${fmtCompact(m.weeklyTotal)} of 4-member week`;
+      barPct = Math.min(m.weeklyShare, 100);
+    }
+
+    return `
+      <div class="rank-item">
+        <div class="rank-item-main">
+          <div class="rank-item-left">
+            <span class="rank-pos ${getRankPosClass(rank)}">${rank}</span>
+            <img src="${m.avatar}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
+            <div class="rank-details">
+              <span class="rank-name">${m.displayName}</span>
+              <span class="rank-meta">7-Day Trajectory</span>
+            </div>
+          </div>
+          <div class="rank-item-right">
+            <span class="rank-val">${mainVal}</span>
+            <span class="rank-subval">${subVal}</span>
+          </div>
+        </div>
+        <div class="rank-bar-bg">
+          <div class="rank-bar-fill" style="width: ${Math.min(Math.max(barPct, 2), 100)}%; background: ${m.accent};"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+  const weeklyListEl = document.getElementById("rank-list-weekly");
+  if (weeklyListEl) weeklyListEl.innerHTML = weeklyHtml;
+
+  // ----------------------------------------------------
+  // Card 3: Catalog Dominance & Lead Breakdown
+  // ----------------------------------------------------
+  const catMetric = rankActiveTabs["catalog"] || "total";
+  let sortedCat = [...memberList];
+  if (catMetric === "total") {
+    sortedCat.sort((a, b) => b.catalogTotal - a.catalogTotal);
+  } else if (catMetric === "daily") {
+    sortedCat.sort((a, b) => b.dailyTotal - a.dailyTotal);
+  } else if (catMetric === "lead") {
+    sortedCat.sort((a, b) => b.catalogLead - a.catalogLead);
+  }
+
+  const topCatVal = sortedCat[0] ? (
+    catMetric === "total" ? sortedCat[0].catalogTotal :
+    catMetric === "daily" ? sortedCat[0].dailyTotal :
+    sortedCat[0].catalogLead
+  ) : 1;
+
+  const catHtml = sortedCat.map((m, idx) => {
+    const rank = idx + 1;
+    let mainVal = "";
+    let subVal = "";
+    let barPct = 0;
+
+    if (catMetric === "total") {
+      mainVal = fmtCompact(m.catalogTotal);
+      subVal = `${m.catalogShare.toFixed(1)}% share of BP solo pie`;
+      barPct = topCatVal > 0 ? (m.catalogTotal / topCatVal) * 100 : 0;
+    } else if (catMetric === "daily") {
+      mainVal = `+${fmtCompact(m.dailyTotal)}/d`;
+      subVal = `${m.dailyShare.toFixed(1)}% of 4-member daily volume`;
+      barPct = topCatVal > 0 ? (m.dailyTotal / topCatVal) * 100 : 0;
+    } else if (catMetric === "lead") {
+      mainVal = `${fmtCompact(m.catalogLead)} Lead`;
+      subVal = `${m.leadRatio.toFixed(1)}% Lead • ${m.catalogFeature > 0 ? fmtCompact(m.catalogFeature) + ' Collab' : '0 Collab'}`;
+      barPct = topCatVal > 0 ? (m.catalogLead / topCatVal) * 100 : 0;
+    }
+
+    return `
+      <div class="rank-item">
+        <div class="rank-item-main">
+          <div class="rank-item-left">
+            <span class="rank-pos ${getRankPosClass(rank)}">${rank}</span>
+            <img src="${m.avatar}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
+            <div class="rank-details">
+              <span class="rank-name">${m.displayName}</span>
+              <span class="rank-meta">${catMetric === 'lead' ? 'Lead vs Collaboration' : 'Solo Discography'}</span>
+            </div>
+          </div>
+          <div class="rank-item-right">
+            <span class="rank-val">${mainVal}</span>
+            <span class="rank-subval">${subVal}</span>
+          </div>
+        </div>
+        <div class="rank-bar-bg">
+          <div class="rank-bar-fill" style="width: ${Math.min(Math.max(barPct, 2), 100)}%; background: ${m.accent};"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+  const catListEl = document.getElementById("rank-list-catalog");
+  if (catListEl) catListEl.innerHTML = catHtml;
 }
 
 // ----------------------------------------------------
@@ -439,7 +740,27 @@ latestDateBtn.addEventListener("click", () => {
   }
 });
 
+// Tab switching for comparative ranking cards
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".rank-tab-btn");
+  if (!btn) return;
+  const target = btn.dataset.target;
+  const metric = btn.dataset.metric;
+  if (!target || !metric) return;
+
+  const parent = btn.parentElement;
+  parent.querySelectorAll(".rank-tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  rankActiveTabs[target] = metric;
+
+  if (window._lastDayData) {
+    renderRankingSections(window._lastDayData, window._lastTotalStreamsSum, window._lastDailyStreamsSum);
+  }
+});
+
 // Initialize on Load
 document.addEventListener("DOMContentLoaded", () => {
   loadSnapshot();
 });
+
