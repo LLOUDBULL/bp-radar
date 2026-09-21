@@ -220,5 +220,12 @@ def build_snapshot():
     print(f"Latest date: {latest_date}")
     print(f"File size: {size_kb:.1f} KB")
 
+    # Step 2: Auto-enrich with Songstats playlist & reach intelligence
+    enrich_script = os.path.join(os.path.dirname(__file__), "enrich_bp_daily_snapshot.py")
+    if os.path.exists(enrich_script):
+        print("\n[Enrichment Step] Running enrich_bp_daily_snapshot.py...")
+        import subprocess
+        subprocess.run([sys.executable, enrich_script], check=False)
+
 if __name__ == "__main__":
     build_snapshot()

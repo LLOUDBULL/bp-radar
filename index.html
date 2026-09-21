@@ -7,7 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    // Ensure trailing slash on repository root for GitHub Pages so relative assets load reliably
+    if (window.location.hostname.includes("github.io") && window.location.pathname.endsWith("/bp-radar")) {
+      window.location.replace(window.location.pathname + "/" + window.location.search + window.location.hash);
+    }
+  </script>
   <link rel="stylesheet" href="styles.css">
+
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -211,6 +218,9 @@
           <button id="view-albums-btn" class="toggle-pill" title="View album project metrics from Albums tab">
             <span>💿 Album Projects</span>
           </button>
+          <button id="view-playlists-btn" class="toggle-pill" title="View flagship playlist positions & reach radar">
+            <span>🎧 Playlist Radar</span>
+          </button>
         </div>
       </div>
 
@@ -278,6 +288,35 @@
             </thead>
             <tbody id="albums-tbody">
               <tr><td colspan="8" class="loading-cell">Loading album telemetry...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Playlist & Reach Radar Table (Active in Playlists mode) -->
+      <div class="table-card" id="playlists-table-card" style="display: none;">
+        <div class="table-header-hint" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.25rem; background: rgba(0, 0, 0, 0.25); border-bottom: 1px solid var(--border-color);">
+          <span style="font-size: 0.78rem; color: var(--text-dim); display: flex; align-items: center; gap: 0.4rem;">
+            <span>🎧</span> <strong>Editorial & Reach Radar:</strong> Daily positions on Today's Top Hits, Top 50 Global, K-Pop ON! with total playlist audience reach.
+          </span>
+          <span class="badge" style="background: rgba(29, 185, 84, 0.1); color: #1DB954; border: 1px solid rgba(29, 185, 84, 0.2);">Songstats Verified</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="playlists-table">
+            <thead>
+              <tr>
+                <th>Track Title</th>
+                <th>Member</th>
+                <th class="num-col">Today's Top Hits</th>
+                <th class="num-col">Top 50 Global</th>
+                <th class="num-col">K-Pop ON!</th>
+                <th class="num-col">Playlists</th>
+                <th class="num-col">Playlist Reach</th>
+                <th>Latest Editorial Milestone</th>
+              </tr>
+            </thead>
+            <tbody id="playlists-tbody">
+              <tr><td colspan="8" class="loading-cell">Loading playlist telemetry...</td></tr>
             </tbody>
           </table>
         </div>

@@ -32,6 +32,16 @@ const MEMBERS = {
   }
 };
 
+function resolveAssetPath(path) {
+  if (!path) return "";
+  if (path.startsWith("data:") || path.startsWith("http://") || path.startsWith("https://")) return path;
+  const clean = path.replace(/^\.\//, "");
+  if (window.location.hostname.includes("github.io") && window.location.pathname.includes("/bp-radar")) {
+    return `/bp-radar/${clean}`;
+  }
+  return `./${clean}`;
+}
+
 function getAvatarFallback(displayName, accent) {
   const initial = (displayName || "B").charAt(0);
   const color = encodeURIComponent(accent || "#EC4899");
@@ -81,11 +91,14 @@ const radarDateLabel = document.getElementById("radar-date-label");
 
 const viewTracksBtn = document.getElementById("view-tracks-btn");
 const viewAlbumsBtn = document.getElementById("view-albums-btn");
+const viewPlaylistsBtn = document.getElementById("view-playlists-btn");
 const albumFilterBar = document.getElementById("album-filter-bar");
 const albumBentoGrid = document.getElementById("album-bento-grid");
 const tracksTableCard = document.getElementById("tracks-table-card");
 const albumsTableCard = document.getElementById("albums-table-card");
 const albumsTbody = document.getElementById("albums-tbody");
+const playlistsTableCard = document.getElementById("playlists-table-card");
+const playlistsTbody = document.getElementById("playlists-tbody");
 const radarMainTitle = document.getElementById("radar-main-title");
 const radarSubTag = document.getElementById("radar-sub-tag");
 
@@ -122,7 +135,8 @@ async function loadSnapshot() {
   statusPulse.style.background = "#38BDF8";
 
   try {
-    const res = await fetch("./data/bp_daily_snapshot.json");
+    const snapshotUrl = resolveAssetPath("data/bp_daily_snapshot.json");
+    const res = await fetch(snapshotUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     snapshotData = await res.json();
 
@@ -335,7 +349,7 @@ async function renderCurrentView() {
       <div class="member-card" style="--accent-color: ${meta.accent};">
         <div class="member-card-header">
           <div class="avatar-wrapper">
-            <img src="${meta.avatar}" alt="${meta.displayName}" class="member-avatar" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
+            <img src="${resolveAssetPath(meta.avatar)}" alt="${meta.displayName}" class="member-avatar" onerror="this.onerror=null; this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
           </div>
           <div class="member-name-group">
             <span class="member-name">${meta.displayName}</span>
@@ -378,7 +392,7 @@ async function renderCurrentView() {
       <tr>
         <td>
           <div class="table-member-cell">
-            <img src="${meta.avatar}" alt="${meta.displayName}" class="table-avatar" style="border: 2px solid ${meta.accent};" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
+            <img src="${resolveAssetPath(meta.avatar)}" alt="${meta.displayName}" class="table-avatar" style="border: 2px solid ${meta.accent};" onerror="this.onerror=null; this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
             <span>${meta.displayName}</span>
           </div>
         </td>
@@ -421,21 +435,40 @@ async function renderCurrentView() {
 
   // Render Top Songs Radar (sorted by daily streams descending)
   combinedTopSongs.sort((a, b) => b.daily_streams - a.daily_streams);
-  const songRows = combinedTopSongs.slice(0, 10).map((s, idx) => `
-    <tr>
-      <td class="font-mono">#${idx + 1}</td>
-      <td><strong>${s.name}</strong></td>
-      <td><span style="color: ${s.accent}; font-weight: 700;">${s.artist}</span></td>
-      <td class="num-col"><strong>+${fmt(s.daily_streams)}</strong></td>
-      <td class="num-col">${fmtChange(s.daily_change)}</td>
-      <td class="num-col">${fmt(s.total_streams)}</td>
-      <td class="num-col">${fmtChange(s.total_change)}</td>
-    </tr>
-  `);
+  const songRows = combinedTopSongs.slice(0, 10).map((s, idx) => {
+    let badgesHtml = "";
+    if (s.playlist_telemetry) {
+      const pl = s.playlist_telemetry;
+      const bList = [];
+      if (pl.tth_pos) bList.push(`<span class="pill-pl tth">TTH #${pl.tth_pos}</span>`);
+      if (pl.top50_global_pos) bList.push(`<span class="pill-pl global">Global #${pl.top50_global_pos}</span>`);
+      if (pl.kpop_on_pos) bList.push(`<span class="pill-pl kpop">K-Pop ON #${pl.kpop_on_pos}</span>`);
+      if (pl.playlist_reach) bList.push(`<span class="pill-pl reach">${fmtCompact(pl.playlist_reach)} Reach</span>`);
+      if (bList.length > 0) {
+        badgesHtml = `<div class="track-badges-row">${bList.join("")}</div>`;
+      }
+    }
+    return `
+      <tr>
+        <td class="font-mono">#${idx + 1}</td>
+        <td>
+          <strong>${s.name}</strong>
+          ${badgesHtml}
+        </td>
+        <td><span style="color: ${s.accent}; font-weight: 700;">${s.artist}</span></td>
+        <td class="num-col"><strong>+${fmt(s.daily_streams)}</strong></td>
+        <td class="num-col">${fmtChange(s.daily_change)}</td>
+        <td class="num-col">${fmt(s.total_streams)}</td>
+        <td class="num-col">${fmtChange(s.total_change)}</td>
+      </tr>
+    `;
+  });
   songsTbody.innerHTML = songRows.length > 0 ? songRows.join("") : `<tr><td colspan="7" class="loading-cell">No song data for this date</td></tr>`;
 
   // Render Albums Section
   renderAlbumsSection(dayData);
+  // Render Playlist Radar Section
+  renderPlaylistRadarSection(dayData);
   updateRadarViewMode();
 }
 
@@ -570,7 +603,7 @@ function renderRankingSections(dayData, totalStreamsSum, dailyStreamsSum) {
         <div class="rank-item-main">
           <div class="rank-item-left">
             <span class="rank-pos ${getRankPosClass(rank)}">${rank}</span>
-            <img src="${m.avatar}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
+            <img src="${resolveAssetPath(m.avatar)}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.onerror=null; this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
             <div class="rank-details">
               <span class="rank-name">${m.displayName}</span>
               <span class="rank-meta">${pureMetric === 'ratio' ? 'Pure Solo Share' : 'Solo Discography'}</span>
@@ -634,7 +667,7 @@ function renderRankingSections(dayData, totalStreamsSum, dailyStreamsSum) {
         <div class="rank-item-main">
           <div class="rank-item-left">
             <span class="rank-pos ${getRankPosClass(rank)}">${rank}</span>
-            <img src="${m.avatar}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
+            <img src="${resolveAssetPath(m.avatar)}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.onerror=null; this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
             <div class="rank-details">
               <span class="rank-name">${m.displayName}</span>
               <span class="rank-meta">7-Day Trajectory</span>
@@ -698,7 +731,7 @@ function renderRankingSections(dayData, totalStreamsSum, dailyStreamsSum) {
         <div class="rank-item-main">
           <div class="rank-item-left">
             <span class="rank-pos ${getRankPosClass(rank)}">${rank}</span>
-            <img src="${m.avatar}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
+            <img src="${resolveAssetPath(m.avatar)}" alt="${m.displayName}" class="rank-avatar" style="border: 2px solid ${m.accent};" onerror="this.onerror=null; this.src=getAvatarFallback('${m.displayName}', '${m.accent}')">
             <div class="rank-details">
               <span class="rank-name">${m.displayName}</span>
               <span class="rank-meta">${catMetric === 'lead' ? 'Lead vs Collaboration' : 'Solo Discography'}</span>
@@ -1008,22 +1041,116 @@ function updateRadarViewMode() {
   if (activeRadarView === "tracks") {
     if (viewTracksBtn) viewTracksBtn.classList.add("active");
     if (viewAlbumsBtn) viewAlbumsBtn.classList.remove("active");
+    if (viewPlaylistsBtn) viewPlaylistsBtn.classList.remove("active");
     if (tracksTableCard) tracksTableCard.style.display = "block";
     if (albumsTableCard) albumsTableCard.style.display = "none";
+    if (playlistsTableCard) playlistsTableCard.style.display = "none";
     if (albumFilterBar) albumFilterBar.style.display = "none";
     if (albumBentoGrid) albumBentoGrid.style.display = "none";
     if (radarMainTitle) radarMainTitle.innerHTML = `Top Daily Songs Radar on <span id="radar-date-label">${currentDate}</span>`;
     if (radarSubTag) radarSubTag.textContent = "Top 5 per member sorted by daily volume";
-  } else {
+  } else if (activeRadarView === "albums") {
     if (viewAlbumsBtn) viewAlbumsBtn.classList.add("active");
     if (viewTracksBtn) viewTracksBtn.classList.remove("active");
+    if (viewPlaylistsBtn) viewPlaylistsBtn.classList.remove("active");
     if (tracksTableCard) tracksTableCard.style.display = "none";
     if (albumsTableCard) albumsTableCard.style.display = "block";
+    if (playlistsTableCard) playlistsTableCard.style.display = "none";
     if (albumFilterBar) albumFilterBar.style.display = "flex";
     if (albumBentoGrid) albumBentoGrid.style.display = "grid";
     if (radarMainTitle) radarMainTitle.innerHTML = `Album Projects Telemetry on <span id="radar-date-label">${currentDate}</span>`;
     if (radarSubTag) radarSubTag.textContent = "Click any album row to view full tracklist breakdown";
+  } else if (activeRadarView === "playlists") {
+    if (viewPlaylistsBtn) viewPlaylistsBtn.classList.add("active");
+    if (viewTracksBtn) viewTracksBtn.classList.remove("active");
+    if (viewAlbumsBtn) viewAlbumsBtn.classList.remove("active");
+    if (tracksTableCard) tracksTableCard.style.display = "none";
+    if (albumsTableCard) albumsTableCard.style.display = "none";
+    if (playlistsTableCard) playlistsTableCard.style.display = "block";
+    if (albumFilterBar) albumFilterBar.style.display = "none";
+    if (albumBentoGrid) albumBentoGrid.style.display = "none";
+    if (radarMainTitle) radarMainTitle.innerHTML = `Flagship Playlist & Reach Radar on <span id="radar-date-label">${currentDate}</span>`;
+    if (radarSubTag) radarSubTag.textContent = "Today's Top Hits, Top 50 Global, K-Pop ON! positions & total audience reach";
   }
+}
+
+function renderPlaylistRadarSection(dayData) {
+  if (!dayData || !playlistsTbody) return;
+
+  const playlistTracks = [];
+
+  Object.entries(MEMBERS).forEach(([key, meta]) => {
+    const mData = dayData[key] || {};
+    const songs = mData.all_songs || mData.top_songs || [];
+
+    songs.forEach(s => {
+      if (s.playlist_telemetry || (s.activities && s.activities.length > 0)) {
+        playlistTracks.push({
+          name: s.name,
+          artist: meta.displayName || key,
+          accent: meta.accent,
+          avatar: meta.avatar,
+          pl: s.playlist_telemetry || {},
+          activities: s.activities || []
+        });
+      }
+    });
+  });
+
+  // Sort by playlist reach descending, then by TTH position ascending
+  playlistTracks.sort((a, b) => {
+    const reachA = a.pl.playlist_reach || 0;
+    const reachB = b.pl.playlist_reach || 0;
+    if (reachB !== reachA) return reachB - reachA;
+    const tthA = a.pl.tth_pos || 999;
+    const tthB = b.pl.tth_pos || 999;
+    return tthA - tthB;
+  });
+
+  if (playlistTracks.length === 0) {
+    playlistsTbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No flagship playlist tracking records on ${currentDate}</td></tr>`;
+    return;
+  }
+
+  const rowsHtml = playlistTracks.map(item => {
+    const tth = item.pl.tth_pos ? `<span class="pill-pl tth">#${item.pl.tth_pos}</span>` : `<span style="color: var(--text-dim);">—</span>`;
+    const g50 = item.pl.top50_global_pos ? `<span class="pill-pl global">#${item.pl.top50_global_pos}</span>` : `<span style="color: var(--text-dim);">—</span>`;
+    const kpop = item.pl.kpop_on_pos ? `<span class="pill-pl kpop">#${item.pl.kpop_on_pos}</span>` : `<span style="color: var(--text-dim);">—</span>`;
+    const count = item.pl.playlist_count ? fmt(item.pl.playlist_count) : `<span style="color: var(--text-dim);">—</span>`;
+    const reach = item.pl.playlist_reach ? `<strong style="color: #C084FC;">${fmtCompact(item.pl.playlist_reach)}</strong>` : `<span style="color: var(--text-dim);">—</span>`;
+
+    let milestoneHtml = `<span style="color: var(--text-dim); font-size: 0.78rem;">Steady Catalog Rotation</span>`;
+    if (item.activities && item.activities.length > 0) {
+      const act = item.activities[0];
+      const icon = act.type === 'editorial_playlist' ? '🎧' : '📈';
+      milestoneHtml = `
+        <div class="milestone-chip" title="${act.text}">
+          <span class="milestone-icon">${icon}</span>
+          <span>${act.text.length > 55 ? act.text.slice(0, 52) + '...' : act.text}</span>
+        </div>
+      `;
+    }
+
+    return `
+      <tr>
+        <td><strong>${item.name}</strong></td>
+        <td>
+          <span style="display: inline-flex; align-items: center; gap: 0.45rem;">
+            <img src="${resolveAssetPath(item.avatar)}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+            <span style="color: ${item.accent}; font-weight: 700;">${item.artist}</span>
+          </span>
+        </td>
+        <td class="num-col">${tth}</td>
+        <td class="num-col">${g50}</td>
+        <td class="num-col">${kpop}</td>
+        <td class="num-col">${count}</td>
+        <td class="num-col">${reach}</td>
+        <td>${milestoneHtml}</td>
+      </tr>
+    `;
+  });
+
+  playlistsTbody.innerHTML = rowsHtml.join("");
 }
 
 function renderAlbumsSection(dayData) {
@@ -1099,7 +1226,7 @@ function renderAlbumsSection(dayData) {
       <div class="album-card clickable-bento-card" data-member="${key}" style="--accent-color: ${meta.accent};" title="Click to view track breakdown">
         <div class="album-card-header">
           <div class="album-card-artist">
-            <img src="${meta.avatar}" alt="${meta.displayName}" class="album-card-avatar" style="border: 2px solid ${meta.accent};" onerror="this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
+            <img src="${resolveAssetPath(meta.avatar)}" alt="${meta.displayName}" class="album-card-avatar" style="border: 2px solid ${meta.accent};" onerror="this.onerror=null; this.src=getAvatarFallback('${meta.displayName}', '${meta.accent}')">
             <span class="member-name" style="font-size: 0.9rem;">${meta.displayName}</span>
           </div>
           <span class="album-badge debut">Debut Studio LP</span>
@@ -1201,7 +1328,7 @@ function renderAlbumsSection(dayData) {
         </td>
         <td>
           <div class="table-member-cell">
-            <img src="${a.avatar}" alt="${a.artist}" class="table-avatar" style="border: 2px solid ${a.accent};" onerror="this.src=getAvatarFallback('${a.artist}', '${a.accent}')">
+            <img src="${resolveAssetPath(a.avatar)}" alt="${a.artist}" class="table-avatar" style="border: 2px solid ${a.accent};" onerror="this.onerror=null; this.src=getAvatarFallback('${a.artist}', '${a.accent}')">
             <span style="color: ${a.accent}; font-weight: 700;">${a.artist}</span>
           </div>
         </td>
@@ -1289,6 +1416,14 @@ if (viewAlbumsBtn) {
     activeRadarView = "albums";
     updateRadarViewMode();
     if (window._lastDayData) renderAlbumsSection(window._lastDayData);
+  });
+}
+
+if (viewPlaylistsBtn) {
+  viewPlaylistsBtn.addEventListener("click", () => {
+    activeRadarView = "playlists";
+    updateRadarViewMode();
+    if (window._lastDayData) renderPlaylistRadarSection(window._lastDayData);
   });
 }
 
